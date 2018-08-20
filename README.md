@@ -86,7 +86,7 @@ host: 127.0.0.1
 port: 3306
 user: root
 password: root
-binlog: ~/Downloads/mysql-bin.005883
+binlog: /tmp/mysql-bin.005883
 schema: xiaoshu
 tables:
   - customer
