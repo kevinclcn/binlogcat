@@ -22,13 +22,10 @@ func main() {
 
 	flag.Parse()
 
-	if _, err := os.Stat(*configFile); err != nil {
-		panic(err)
-	}
-
 	config, err := binlogcat.LoadFromFile(*configFile)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Configuration file %s read error: %v\n", *configFile, err)
+		os.Exit(1)
 	}
 
 
@@ -37,9 +34,16 @@ func main() {
 		myhost = config.Host
 	}
 
+	if len(myhost) == 0 {
+		myhost = "127.0.0.1"
+	}
+
 	myport := uint16(*port)
 	if myport == 0 {
 		myport = config.Port
+	}
+	if myport == 0 {
+		myport = 3306
 	}
 
 	myuser := *user
@@ -47,21 +51,33 @@ func main() {
 		myuser = config.User
 	}
 
+	if len(myuser) == 0 {
+		fmt.Fprintf(os.Stderr, "mysql user should not be empty.\n")
+		os.Exit(1)
+	}
+
 	mypassword := *password
 	if mypassword == "" {
 		mypassword = config.Password
+	}
+
+	if len(mypassword) == 0 {
+		fmt.Fprintf(os.Stderr, "mysql password should not be empty.\n")
+		os.Exit(1)
 	}
 
 	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%d)/", myuser, mypassword, myhost, myport)
 
 	db, err := sql.Open("mysql", dataSource)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "mysql database connection open error: %v\n", err)
+		os.Exit(1)
 	}
 
 	schema, err := binlogcat.NewSchemaFromDB(db, config.SchemaName, config.ScanTables)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "mysql database schema fetch error: %v\n", err)
+		os.Exit(1)
 	}
 
 	myparser := binlogcat.NewParser(schema)
@@ -74,7 +90,8 @@ func main() {
 
 		b := make([]byte, 4)
 		if _, err := os.Stdin.Read(b); err != nil {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "failed to read from stdin: %v\n", err)
+			os.Exit(1)
 		}
 
 		parser.ParseReader(os.Stdin, myparser.OnEvent)

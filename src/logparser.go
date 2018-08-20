@@ -58,7 +58,6 @@ func (p *Parser)OnEvent(event *replication.BinlogEvent) error {
 	table := string(re.Table.Table)
 	tableDef, ok := p.Schema.Tables[table]
 	if !ok {
-		fmt.Printf("skip table %s \n", table)
 		return nil
 	}
 
