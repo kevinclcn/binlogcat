@@ -1,5 +1,7 @@
 # MySQL binlog cat tool
 
+The minimum go version required is go1.11. The one who use lower version of go should use vgo to build the project.
+
 ## Introduction
 
 binlogcat is a tool to show row events (insert/update/delete) 
@@ -65,14 +67,14 @@ in MySQL binlog file. The log would be shown to stdout in
 
 ## Installation
 
-To install it in golang 1.10 version, run:
+To install it in golang 1.11 version, run:
 
 ```
 git pull github.com/kevinclcn/binlogcat
 
 cd binlogcat
 
-vgo build
+go build
 
 
 ```
