@@ -1,6 +1,6 @@
 # MySQL binlog cat tool
 
-The minimum go version required is go1.11. The one who use lower version of go should use vgo to build the project.
+The minimum version of go required is go1.11. The one who use lower version of go should use vgo to build the project.
 
 ## Introduction
 
