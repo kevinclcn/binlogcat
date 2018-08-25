@@ -70,12 +70,7 @@ in MySQL binlog file. The log would be shown to stdout in
 To install it in golang 1.11 version, run:
 
 ```
-git pull github.com/kevinclcn/binlogcat
-
-cd binlogcat
-
-go build
-
+git get github.com/kevinclcn/binlogcat
 
 ```
 
