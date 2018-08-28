@@ -1,14 +1,14 @@
 package binlogcat
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/siddontang/go-mysql/replication"
 	"strings"
-	"fmt"
-	"encoding/json"
 )
 
 type Parser struct {
-	Schema *Schema
+	Schema     *Schema
 	TableIdMap map[uint64]string
 }
 
@@ -19,16 +19,16 @@ func NewParser(schema *Schema) *Parser {
 }
 
 type RowData struct {
-	Database string `json:"database"`
-	Table string `json:"table"`
-	Type string `json:"type"`
-	Ts uint32 `json:"ts"`
-	ServerId uint32 `json:"server_id"`
-	Data map[string]interface{} `json:"data"`
-	Old map[string]interface{} `json:"old,omitempty"`
+	Database string                 `json:"database"`
+	Table    string                 `json:"table"`
+	Type     string                 `json:"type"`
+	Ts       uint32                 `json:"ts"`
+	ServerId uint32                 `json:"server_id"`
+	Data     map[string]interface{} `json:"data"`
+	Old      map[string]interface{} `json:"old,omitempty"`
 }
 
-func convertEventDataToRowData(eventData []interface{}, rowData map[string]interface{}, columnsDef map[int]*Column)  {
+func convertEventDataToRowData(eventData []interface{}, rowData map[string]interface{}, columnsDef map[int]*Column) {
 	for i, d := range eventData {
 
 		if d == nil {
@@ -44,7 +44,7 @@ func convertEventDataToRowData(eventData []interface{}, rowData map[string]inter
 	}
 }
 
-func (p *Parser)OnEvent(event *replication.BinlogEvent) error {
+func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 	re, ok := event.Event.(*replication.RowsEvent)
 	if !ok {
 		return nil
@@ -61,7 +61,7 @@ func (p *Parser)OnEvent(event *replication.BinlogEvent) error {
 		return nil
 	}
 
-	rowData := RowData{Database:schema, Table:table, Ts:event.Header.Timestamp, ServerId:event.Header.ServerID}
+	rowData := RowData{Database: schema, Table: table, Ts: event.Header.Timestamp, ServerId: event.Header.ServerID}
 
 	rowData.Data = make(map[string]interface{})
 

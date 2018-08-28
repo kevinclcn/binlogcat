@@ -1,21 +1,21 @@
 package main
 
 import (
-	"github.com/siddontang/go-mysql/replication"
 	"database/sql"
+	"flag"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/kevinclcn/binlogcat/src"
-	"fmt"
-	"flag"
+	"github.com/siddontang/go-mysql/replication"
 	"os"
 )
 
 var (
 	configFile = flag.String("c", "./config.yml", "the config file path, default is ./config.yml")
-	host = flag.String("h", "", "the host address of mysql")
-	port = flag.Int("p", 0, "the port of mysql")
-	user = flag.String("u", "", "user name of mysql database")
-	password = flag.String("P", "", "password of mysql database")
+	host       = flag.String("h", "", "the host address of mysql")
+	port       = flag.Int("p", 0, "the port of mysql")
+	user       = flag.String("u", "", "user name of mysql database")
+	password   = flag.String("P", "", "password of mysql database")
 )
 
 func main() {
@@ -27,7 +27,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Configuration file %s read error: %v\n", *configFile, err)
 		os.Exit(1)
 	}
-
 
 	myhost := *host
 	if myhost == "" {

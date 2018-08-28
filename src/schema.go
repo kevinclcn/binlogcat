@@ -6,7 +6,7 @@ import (
 )
 
 type Schema struct {
-	Name string
+	Name   string
 	Tables map[string]*Table
 }
 
@@ -15,14 +15,14 @@ type Table struct {
 }
 
 type Column struct {
-	TableName string
+	TableName  string
 	ColumnName string
-	DataType string
+	DataType   string
 	OrdinalPos int
 }
 
 func NewSchemaFromDB(db *sql.DB, schemaName string, scanTables []string) (*Schema, error) {
-	query := fmt.Sprintf("select table_name, column_name, data_type, ordinal_position " +
+	query := fmt.Sprintf("select table_name, column_name, data_type, ordinal_position "+
 		"from information_schema.columns where table_schema = '%s' ", schemaName)
 
 	rows, err := db.Query(query)
@@ -36,7 +36,6 @@ func NewSchemaFromDB(db *sql.DB, schemaName string, scanTables []string) (*Schem
 	for _, table := range scanTables {
 		scanTablesMap[table] = true
 	}
-
 
 	for rows.Next() {
 
