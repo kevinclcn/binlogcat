@@ -3,8 +3,10 @@ package binlogcat
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/siddontang/go-mysql/replication"
+	"os"
 	"strings"
+
+	"github.com/siddontang/go-mysql/replication"
 )
 
 type Parser struct {
@@ -73,8 +75,8 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 	switch event.Header.EventType {
 	case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
 		rowData.Type = "insert"
-	case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
-		rowData.Type = "delete"
+	// case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
+	// 	rowData.Type = "delete"
 	case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
 		rowData.Type = "update"
 		rowData.Old = make(map[string]interface{})
@@ -90,6 +92,12 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 	}
 
 	fmt.Println(string(res))
+
+	fileName := fmt.Sprintf("./%s.txt", rowData.Table)
+	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f.Write(res)
+
+	defer f.Close()
 
 	return nil
 }

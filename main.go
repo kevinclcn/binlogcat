@@ -8,6 +8,7 @@ import (
 	"github.com/kevinclcn/binlogcat/src"
 	"github.com/siddontang/go-mysql/replication"
 	"os"
+	"path/filepath"
 )
 
 var (
@@ -84,9 +85,21 @@ func main() {
 	parser := replication.NewBinlogParser()
 
 	if len(config.Binlog) > 0 {
-		parser.ParseFile(config.Binlog, 0, myparser.OnEvent)
-	} else {
 
+		stat, err := os.Stat(config.Binlog)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "no file exists: %v\n", err)
+			os.Exit(1)
+		}
+
+		if stat.Mode().IsRegular() {
+			parser.ParseFile(config.Binlog, 0, myparser.OnEvent)
+		} else {
+			filepath.Walk(config.Binlog, func(path string, info os.FileInfo, err error) error {
+				return parser.ParseFile(path, 0, myparser.OnEvent)
+			})
+		}
+	} else {
 		b := make([]byte, 4)
 		if _, err := os.Stdin.Read(b); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to read from stdin: %v\n", err)

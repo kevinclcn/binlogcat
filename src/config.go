@@ -13,6 +13,7 @@ type Config struct {
 	Binlog     string   `yaml:"binlog"`
 	SchemaName string   `yaml:"schema"`
 	ScanTables []string `yaml:"tables"`
+	Output     string   `yaml:"output"`
 }
 
 func LoadFromFile(path string) (*Config, error) {
