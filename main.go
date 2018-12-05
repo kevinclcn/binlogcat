@@ -96,10 +96,13 @@ func main() {
 			parser.ParseFile(config.Binlog, 0, myparser.OnEvent)
 		} else {
 			filepath.Walk(config.Binlog, func(path string, info os.FileInfo, err error) error {
-				if info.IsDir() {
-					return filepath.SkipDir
+				if path != config.Binlog {
+					fmt.Printf("walking %s\n", path)
+					err = parser.ParseFile(path, 0, myparser.OnEvent)
+
+					fmt.Printf("walking %v\n", err)
 				}
-				parser.ParseFile(path, 0, myparser.OnEvent)
+
 				return nil
 			})
 		}
