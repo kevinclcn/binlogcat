@@ -96,7 +96,11 @@ func main() {
 			parser.ParseFile(config.Binlog, 0, myparser.OnEvent)
 		} else {
 			filepath.Walk(config.Binlog, func(path string, info os.FileInfo, err error) error {
-				return parser.ParseFile(path, 0, myparser.OnEvent)
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				parser.ParseFile(path, 0, myparser.OnEvent)
+				return nil
 			})
 		}
 	} else {
