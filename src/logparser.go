@@ -84,6 +84,7 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 		data := re.Rows[1]
 		convertEventDataToRowData(data, rowData.Old, columns)
 	default:
+		return nil
 	}
 
 	res, err := json.Marshal(rowData)
@@ -96,6 +97,7 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 	fileName := fmt.Sprintf("./%s.txt", rowData.Table)
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	f.Write(res)
+	f.Write([]byte{'\n'})
 
 	defer f.Close()
 
