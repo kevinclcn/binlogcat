@@ -73,16 +73,16 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 	convertEventDataToRowData(data, rowData.Data, columns)
 
 	switch event.Header.EventType {
-	case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
-		rowData.Type = "insert"
-	// case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
-	// 	rowData.Type = "delete"
-	case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
-		rowData.Type = "update"
-		rowData.Old = make(map[string]interface{})
-
-		data := re.Rows[1]
-		convertEventDataToRowData(data, rowData.Old, columns)
+	//case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
+	//	rowData.Type = "insert"
+	case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
+		rowData.Type = "delete"
+	//case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
+	//	rowData.Type = "update"
+	//	rowData.Old = make(map[string]interface{})
+	//
+	//	data := re.Rows[1]
+	//	convertEventDataToRowData(data, rowData.Old, columns)
 	default:
 		return nil
 	}
