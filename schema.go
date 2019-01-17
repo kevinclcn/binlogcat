@@ -1,4 +1,4 @@
-package binlogcat
+package main
 
 import (
 	"database/sql"
@@ -21,19 +21,19 @@ type Column struct {
 	OrdinalPos int
 }
 
-func NewSchemaFromDB(db *sql.DB, schemaName string, scanTables []string) (*Schema, error) {
+func NewSchemaFromDB(db *sql.DB, database string, tables []string) (*Schema, error) {
 	query := fmt.Sprintf("select table_name, column_name, data_type, ordinal_position "+
-		"from information_schema.columns where table_schema = '%s' ", schemaName)
+		"from information_schema.columns where table_schema = '%s' ", database)
 
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 
-	schema := Schema{schemaName, make(map[string]*Table)}
+	schema := Schema{database, make(map[string]*Table)}
 
 	scanTablesMap := make(map[string]bool)
-	for _, table := range scanTables {
+	for _, table := range tables {
 		scanTablesMap[table] = true
 	}
 
@@ -45,7 +45,7 @@ func NewSchemaFromDB(db *sql.DB, schemaName string, scanTables []string) (*Schem
 
 		c.OrdinalPos--
 
-		if scanTables != nil && !scanTablesMap[c.TableName] {
+		if tables != nil && !scanTablesMap[c.TableName] {
 			continue
 		}
 

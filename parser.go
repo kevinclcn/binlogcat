@@ -1,8 +1,8 @@
-package binlogcat
+package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/rs/zerolog/log"
 	"os"
 	"strings"
 
@@ -10,12 +10,12 @@ import (
 )
 
 type Parser struct {
-	Schema     *Schema
-	TableIdMap map[uint64]string
+	conf   *Config
+	Schema *Schema
 }
 
-func NewParser(schema *Schema) *Parser {
-	parser := Parser{schema, make(map[uint64]string)}
+func NewEventParser(schema *Schema, conf *Config) *Parser {
+	parser := Parser{conf, schema}
 
 	return &parser
 }
@@ -47,6 +47,11 @@ func convertEventDataToRowData(eventData []interface{}, rowData map[string]inter
 }
 
 func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
+
+	if _, ok := p.conf.events[event.Header.EventType]; !ok {
+		return nil
+	}
+
 	re, ok := event.Event.(*replication.RowsEvent)
 	if !ok {
 		return nil
@@ -60,6 +65,7 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 	table := string(re.Table.Table)
 	tableDef, ok := p.Schema.Tables[table]
 	if !ok {
+		log.Info().Msgf("skip table %s", table)
 		return nil
 	}
 
@@ -73,16 +79,19 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 	convertEventDataToRowData(data, rowData.Data, columns)
 
 	switch event.Header.EventType {
-	//case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
-	//	rowData.Type = "insert"
+	case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
+		rowData.Type = "insert"
+
 	case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
 		rowData.Type = "delete"
-	//case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
-	//	rowData.Type = "update"
-	//	rowData.Old = make(map[string]interface{})
-	//
-	//	data := re.Rows[1]
-	//	convertEventDataToRowData(data, rowData.Old, columns)
+
+	case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
+		rowData.Type = "update"
+		rowData.Old = make(map[string]interface{})
+
+		data := re.Rows[1]
+		convertEventDataToRowData(data, rowData.Old, columns)
+
 	default:
 		return nil
 	}
@@ -92,14 +101,8 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 		return err
 	}
 
-	fmt.Println(string(res))
-
-	fileName := fmt.Sprintf("./%s.txt", rowData.Table)
-	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	f.Write(res)
-	f.Write([]byte{'\n'})
-
-	defer f.Close()
+	os.Stdout.Write(res)
+	os.Stdout.Write([]byte{'\n'})
 
 	return nil
 }

@@ -1,12 +1,14 @@
-# MySQL binlog cat tool
+# MySQL binlog parser
 
-The minimum version of go required is go1.11. The one who use lower version of go should use vgo to build the project.
+go version > 1.11
 
 ## Introduction
 
-binlogcat is a tool to show row events (insert/update/delete) 
-in MySQL binlog file. The log would be shown to stdout in 
-[maxwell](http://maxwells-daemon.io/dataformat/) format:
+parsebinlog is used to parse mysql insert/update/delete row events in MySQL binlog file. 
+
+The parsing result would be written to stdout, the parsing error/info would be written to stderr.
+
+The parsing result is formatted after [maxwell](http://maxwells-daemon.io/dataformat/)'s format:
 
 - INSERT
 
@@ -67,35 +69,15 @@ in MySQL binlog file. The log would be shown to stdout in
 
 ## Installation
 
-To install it in golang 1.11 version, run:
-
 ```
-git get github.com/kevinclcn/binlogcat
+go get github.com/kevinclcn/binlogcat
 
 ```
 
 ## Usage
 
-1. Add configuration below to a configuration file (such as config.yml) and change the fields on your need.
+parsebinlog -h
 
-```yaml
-host: 127.0.0.1
-port: 3306
-user: root
-password: root
-binlog: /tmp/mysql-bin.005883
-schema: xiaoshu
-tables:
-  - customer
-```
-
-2. run below commands
-
-
-```
-./binlogcat -c ./config.yml | jq .
-
-```
 
 
 

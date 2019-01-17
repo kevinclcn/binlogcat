@@ -5,115 +5,107 @@ import (
 	"flag"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/kevinclcn/binlogcat/src"
+	"github.com/rs/zerolog/log"
 	"github.com/siddontang/go-mysql/replication"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-var (
-	configFile = flag.String("c", "./config.yml", "the config file path, default is ./config.yml")
-	host       = flag.String("h", "", "the host address of mysql")
-	port       = flag.Int("p", 0, "the port of mysql")
-	user       = flag.String("u", "", "user name of mysql database")
-	password   = flag.String("P", "", "password of mysql database")
-)
+type Config struct {
+	host      string
+	port      int
+	user      string
+	password  string
+	binlogdir string
+	database  string
+	tables    []string
+	events    map[replication.EventType]bool
+}
 
-func main() {
+var conf Config
+
+func initConfig() {
+	flag.StringVar(&conf.host, "host", "127.0.0.1", "the host address of mysql")
+	flag.IntVar(&conf.port, "port", 3306, "the port of mysql")
+
+	flag.StringVar(&conf.user, "user", "root", "user name of mysql database")
+	flag.StringVar(&conf.password, "password", "", "password of mysql database")
+	flag.StringVar(&conf.binlogdir, "binlogdir", "", "binlog files")
+	flag.StringVar(&conf.database, "schema", "", "only binlog for this schema will be read")
+	tables := flag.String("tables", "customer,customer_event", "only binlog for these tables (comma separated) will be read")
+	events := flag.String("events", "all", "comma separated event types: insert, update and delete")
+
+	conf.tables = strings.Split(*tables, ",")
+	if *events == "all" {
+		*events = "insert,update,delete"
+	}
+	conf.events = make(map[replication.EventType]bool)
+	for _, e := range strings.Split(*events, ",") {
+
+		if e == "insert" {
+			conf.events[replication.WRITE_ROWS_EVENTv1] = true
+			conf.events[replication.WRITE_ROWS_EVENTv2] = true
+		} else if e == "update" {
+			conf.events[replication.UPDATE_ROWS_EVENTv1] = true
+			conf.events[replication.UPDATE_ROWS_EVENTv2] = true
+		} else if e == "delete" {
+			conf.events[replication.DELETE_ROWS_EVENTv1] = true
+			conf.events[replication.DELETE_ROWS_EVENTv2] = true
+		}
+	}
 
 	flag.Parse()
+}
 
-	config, err := binlogcat.LoadFromFile(*configFile)
+func checkErr(err error, msg string) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Configuration file %s read error: %v\n", *configFile, err)
+		log.Error().Msgf(msg+": %v", err)
 		os.Exit(1)
 	}
 
-	myhost := *host
-	if myhost == "" {
-		myhost = config.Host
-	}
+}
 
-	if len(myhost) == 0 {
-		myhost = "127.0.0.1"
-	}
+func main() {
+	initConfig()
 
-	myport := uint16(*port)
-	if myport == 0 {
-		myport = config.Port
-	}
-	if myport == 0 {
-		myport = 3306
-	}
-
-	myuser := *user
-	if myuser == "" {
-		myuser = config.User
-	}
-
-	if len(myuser) == 0 {
-		fmt.Fprintf(os.Stderr, "mysql user should not be empty.\n")
-		os.Exit(1)
-	}
-
-	mypassword := *password
-	if mypassword == "" {
-		mypassword = config.Password
-	}
-
-	if len(mypassword) == 0 {
-		fmt.Fprintf(os.Stderr, "mysql password should not be empty.\n")
-		os.Exit(1)
-	}
-
-	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%d)/", myuser, mypassword, myhost, myport)
+	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%d)/", conf.user, conf.password, conf.host, conf.port)
+	log.Info().Msg(dataSource)
 
 	db, err := sql.Open("mysql", dataSource)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "mysql database connection open error: %v\n", err)
-		os.Exit(1)
-	}
+	checkErr(err, "mysql database connection open error")
 
-	schema, err := binlogcat.NewSchemaFromDB(db, config.SchemaName, config.ScanTables)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "mysql database schema fetch error: %v\n", err)
-		os.Exit(1)
-	}
-
-	myparser := binlogcat.NewParser(schema)
+	schema, err := NewSchemaFromDB(db, conf.database, conf.tables)
+	checkErr(err, "mysql database schema fetch error")
 
 	parser := replication.NewBinlogParser()
+	eventParser := NewEventParser(schema, &conf)
 
-	if len(config.Binlog) > 0 {
+	if len(conf.binlogdir) > 0 {
 
-		stat, err := os.Stat(config.Binlog)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "no file exists: %v\n", err)
-			os.Exit(1)
-		}
+		err = filepath.Walk(conf.binlogdir, func(path string, info os.FileInfo, err error) error {
+			stat, err := os.Stat(conf.binlogdir)
+			if err != nil {
+				return err
+			}
 
-		if stat.Mode().IsRegular() {
-			parser.ParseFile(config.Binlog, 0, myparser.OnEvent)
-		} else {
-			filepath.Walk(config.Binlog, func(path string, info os.FileInfo, err error) error {
-				if path != config.Binlog {
-					fmt.Printf("walking %s\n", path)
-					err = parser.ParseFile(path, 0, myparser.OnEvent)
+			if stat.Mode().IsRegular() {
+				log.Info().Msgf("walking %s\n", path)
+				err = parser.ParseFile(path, 0, eventParser.OnEvent)
+			}
 
-					fmt.Printf("walking %v\n", err)
-				}
+			return err
+		})
 
-				return nil
-			})
-		}
+		checkErr(err, "failed to pass binlog")
+		log.Info().Msg("finished binlog parsing")
 	} else {
 		b := make([]byte, 4)
-		if _, err := os.Stdin.Read(b); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to read from stdin: %v\n", err)
-			os.Exit(1)
-		}
+		_, err := os.Stdin.Read(b)
+		checkErr(err, "failed to read from stdin")
 
-		parser.ParseReader(os.Stdin, myparser.OnEvent)
+		err = parser.ParseReader(os.Stdin, eventParser.OnEvent)
+		checkErr(err, "faild passing the binlog")
 	}
 
 }
