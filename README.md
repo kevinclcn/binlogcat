@@ -70,7 +70,7 @@ The parsing result is formatted after [maxwell](http://maxwells-daemon.io/datafo
 ## Installation
 
 ```
-go get github.com/kevinclcn/binlogcat
+go get github.com/kevinclcn/parsebinlog
 
 ```
 
