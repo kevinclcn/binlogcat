@@ -36,6 +36,8 @@ func initConfig() {
 	tables := flag.String("tables", "customer,customer_event", "only binlog for these tables (comma separated) will be read")
 	events := flag.String("events", "all", "comma separated event types: insert, update and delete")
 
+	flag.Parse()
+
 	conf.tables = strings.Split(*tables, ",")
 	if *events == "all" {
 		*events = "insert,update,delete"
@@ -55,7 +57,6 @@ func initConfig() {
 		}
 	}
 
-	flag.Parse()
 }
 
 func checkErr(err error, msg string) {
