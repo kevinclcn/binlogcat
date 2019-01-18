@@ -76,7 +76,18 @@ go get github.com/kevinclcn/parsebinlog
 
 ## Usage
 
-parsebinlog -h
+### parse binlog files
+```
+./parsebinlog -user root -password root -db xiaoshu -tables customer -files {binlog file or directory}
+
+```
+
+### parse binlog http urls
+
+```
+echo "http://binlog.download.url" | ./parsebinlog -user root -password root -db xiaoshu -tables customer
+
+```
 
 
 

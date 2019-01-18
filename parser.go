@@ -2,19 +2,20 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/rs/zerolog/log"
 	"os"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/siddontang/go-mysql/replication"
 )
 
 type Parser struct {
-	conf   *Config
+	conf   *config
 	Schema *Schema
 }
 
-func NewEventParser(schema *Schema, conf *Config) *Parser {
+func NewEventParser(schema *Schema, conf *config) *Parser {
 	parser := Parser{conf, schema}
 
 	return &parser

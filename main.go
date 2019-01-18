@@ -1,29 +1,32 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"flag"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/rs/zerolog/log"
-	"github.com/siddontang/go-mysql/replication"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog/log"
+	"github.com/siddontang/go-mysql/replication"
 )
 
-type Config struct {
-	host      string
-	port      int
-	user      string
-	password  string
-	binlogdir string
-	database  string
-	tables    []string
-	events    map[replication.EventType]bool
+type config struct {
+	host     string
+	port     int
+	user     string
+	password string
+	files    string
+	database string
+	tables   []string
+	events   map[replication.EventType]bool
 }
 
-var conf Config
+var conf config
 
 func initConfig() {
 	flag.StringVar(&conf.host, "host", "127.0.0.1", "the host address of mysql")
@@ -31,13 +34,14 @@ func initConfig() {
 
 	flag.StringVar(&conf.user, "user", "root", "user name of mysql database")
 	flag.StringVar(&conf.password, "password", "", "password of mysql database")
-	flag.StringVar(&conf.binlogdir, "binlogdir", "", "binlog files")
-	flag.StringVar(&conf.database, "schema", "", "only binlog for this schema will be read")
+	flag.StringVar(&conf.files, "files", "", "binlog files")
+	flag.StringVar(&conf.database, "db", "", "only binlog for this schema will be read")
 	tables := flag.String("tables", "customer,customer_event", "only binlog for these tables (comma separated) will be read")
 	events := flag.String("events", "all", "comma separated event types: insert, update and delete")
 
 	flag.Parse()
 
+	// process flags
 	conf.tables = strings.Split(*tables, ",")
 	if *events == "all" {
 		*events = "insert,update,delete"
@@ -71,7 +75,6 @@ func main() {
 	initConfig()
 
 	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%d)/", conf.user, conf.password, conf.host, conf.port)
-	log.Info().Msg(dataSource)
 
 	db, err := sql.Open("mysql", dataSource)
 	checkErr(err, "mysql database connection open error")
@@ -82,10 +85,10 @@ func main() {
 	parser := replication.NewBinlogParser()
 	eventParser := NewEventParser(schema, &conf)
 
-	if len(conf.binlogdir) > 0 {
+	if len(conf.files) > 0 {
 
-		err = filepath.Walk(conf.binlogdir, func(path string, info os.FileInfo, err error) error {
-			stat, err := os.Stat(conf.binlogdir)
+		err = filepath.Walk(conf.files, func(path string, info os.FileInfo, err error) error {
+			stat, err := os.Stat(conf.files)
 			if err != nil {
 				return err
 			}
@@ -101,12 +104,24 @@ func main() {
 		checkErr(err, "failed to pass binlog")
 		log.Info().Msg("finished binlog parsing")
 	} else {
-		b := make([]byte, 4)
-		_, err := os.Stdin.Read(b)
-		checkErr(err, "failed to read from stdin")
+		// read url from stdin
 
-		err = parser.ParseReader(os.Stdin, eventParser.OnEvent)
-		checkErr(err, "faild passing the binlog")
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			downloadLink := scanner.Text()
+			log.Info().Msgf("processing binlog: %s", downloadLink)
+			resp, err := http.Get(downloadLink)
+			if err != nil {
+				checkErr(err, "failed to download binlog")
+			}
+
+			b := make([]byte, 4)
+			_, err = resp.Body.Read(b)
+			checkErr(err, "failed to read from stdin")
+
+			err = parser.ParseReader(resp.Body, eventParser.OnEvent)
+			checkErr(err, "faild passing the binlog")
+		}
 	}
 
 }
