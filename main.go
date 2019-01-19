@@ -10,20 +10,26 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Shopify/sarama"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/siddontang/go-mysql/replication"
 )
 
 type config struct {
-	host     string
-	port     int
-	user     string
-	password string
-	files    string
-	database string
-	tables   []string
-	events   map[replication.EventType]bool
+	host            string
+	port            int
+	user            string
+	password        string
+	files           string
+	database        string
+	tables          []string
+	events          map[replication.EventType]bool
+	brokerList      string
+	kafkaTopic      string
+	partitionColumn string
+	producer        sarama.AsyncProducer
 }
 
 var conf config
@@ -36,8 +42,12 @@ func initConfig() {
 	flag.StringVar(&conf.password, "password", "", "password of mysql database")
 	flag.StringVar(&conf.files, "files", "", "binlog files")
 	flag.StringVar(&conf.database, "db", "", "only binlog for this schema will be read")
-	tables := flag.String("tables", "customer,customer_event", "only binlog for these tables (comma separated) will be read")
+	tables := flag.String("tables", "customer,order", "only binlog for these tables (comma separated) will be read")
 	events := flag.String("events", "all", "comma separated event types: insert, update and delete")
+
+	flag.StringVar(&conf.brokerList, "broker-list", "", "kafka broker list")
+	flag.StringVar(&conf.kafkaTopic, "kafka-topic", "etl_%{database}_%{table}", "kafka topic patterns")
+	flag.StringVar(&conf.partitionColumn, "key-column", "id", "kafka message key column")
 
 	flag.Parse()
 
@@ -61,6 +71,10 @@ func initConfig() {
 		}
 	}
 
+	if len(conf.brokerList) > 0 {
+		conf.producer = newAsyncProducer(conf.brokerList)
+	}
+
 }
 
 func checkErr(err error, msg string) {
@@ -72,6 +86,7 @@ func checkErr(err error, msg string) {
 }
 
 func main() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	initConfig()
 
 	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%d)/", conf.user, conf.password, conf.host, conf.port)

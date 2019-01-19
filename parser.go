@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
+	"github.com/Shopify/sarama"
 	"github.com/rs/zerolog/log"
 
 	"github.com/siddontang/go-mysql/replication"
@@ -102,8 +104,26 @@ func (p *Parser) OnEvent(event *replication.BinlogEvent) error {
 		return err
 	}
 
-	os.Stdout.Write(res)
-	os.Stdout.Write([]byte{'\n'})
+	if conf.producer != nil {
+
+		topic := strings.Replace(conf.kafkaTopic, "%{database}", rowData.Database, 1)
+		topic = strings.Replace(topic, "%{table}", rowData.Table, 1)
+
+		key := rowData.Data[conf.partitionColumn]
+		if key == nil {
+			key = rowData.Data["id"]
+		}
+
+		conf.producer.Input() <- &sarama.ProducerMessage{
+			Topic: topic,
+			Key:   sarama.StringEncoder(fmt.Sprintf("%s", key)),
+			Value: sarama.StringEncoder(string(res)),
+		}
+
+	} else {
+		os.Stdout.Write(res)
+		os.Stdout.Write([]byte{'\n'})
+	}
 
 	return nil
 }
