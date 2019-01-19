@@ -1,16 +1,12 @@
 # MySQL binlog parser
 
-go version > 1.11
-
-## Introduction
-
 parsebinlog is used to parse mysql insert/update/delete row events in MySQL binlog file. 
 
 The parsing result would be written to stdout or kafka topic, the parsing error/info would be written to stderr.
 
-## Usage
-
 ### Installation
+
+go version > 1.11
 
 ```
 go get github.com/kevinclcn/parsebinlog
@@ -26,18 +22,20 @@ go get github.com/kevinclcn/parsebinlog
 ### parse binlog http urls
 
 ```
-echo "http://binlog.download.url" | ./parsebinlog -user root -password root -db xiaoshu -tables customer
+echo "http://binlog.download.url" | \
+./parsebinlog -user root -password root -db xiaoshu -tables customer
 
 ```
 
 ### send binlog parse result to kafka topic
 
 ```
-./parsebinlog -user root -password root -db xiaoshu -tables customer -files {binlog file or directory} --broker-list=127.0.0.1:9092
+./parsebinlog -user root -password root -db xiaoshu -tables customer \
+   -files {binlog file or directory} --broker-list=127.0.0.1:9092
 
 ```
 
-## Parsing result
+### Parsing result
 
 The parsing result is formatted after [maxwell](http://maxwells-daemon.io/dataformat/)'s format:
 
