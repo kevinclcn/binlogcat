@@ -43,7 +43,7 @@ func initConfig() {
 	flag.StringVar(&conf.files, "files", "", "binlog files")
 	flag.StringVar(&conf.database, "db", "", "only binlog for this schema will be read")
 	tables := flag.String("tables", "customer,order", "only binlog for these tables (comma separated) will be read")
-	events := flag.String("events", "all", "comma separated event types: insert, update and delete")
+	events := flag.String("actions", "", "comma separated event types: insert, update and delete")
 
 	flag.StringVar(&conf.brokerList, "broker-list", "", "kafka broker list")
 	flag.StringVar(&conf.kafkaTopic, "kafka-topic", "etl_%{database}_%{table}", "kafka topic patterns")
@@ -53,7 +53,7 @@ func initConfig() {
 
 	// process flags
 	conf.tables = strings.Split(*tables, ",")
-	if *events == "all" {
+	if len(*events) == 0 {
 		*events = "insert,update,delete"
 	}
 	conf.events = make(map[replication.EventType]bool)
